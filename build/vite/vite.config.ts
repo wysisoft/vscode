@@ -197,7 +197,13 @@ export default defineConfig({
 	},
 	server: {
 		cors: true,
-		port: 5199,
+		headers: {
+			'Cross-Origin-Opener-Policy': 'same-origin',
+			'Cross-Origin-Embedder-Policy': 'credentialless',
+		},
+		allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', 'webcode.host'],
+		port: 8081,
+		host: '0.0.0.0',
 		fs: {
 			allow: [
 				// To allow loading from sources, not needed when loading monaco-editor from npm package

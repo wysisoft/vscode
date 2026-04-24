@@ -29,6 +29,9 @@ import { localize } from '../../../../nls.js';
 import { WebFileSystemAccess } from '../../../../platform/files/browser/webFileSystemAccess.js';
 import { revive } from '../../../../base/common/marshalling.js';
 
+import type { NodepodFS } from '/home/a/webcode.host/vscode/src/vs/platform/files/browser/nodepod-fs.d.ts';
+
+
 export class RemoteSearchService extends SearchService {
 	constructor(
 		@IModelService modelService: IModelService,
@@ -196,10 +199,67 @@ export class LocalFileSearchWorkerClient extends Disposable implements ISearchRe
 					})
 				));
 				LocalFileSearchWorkerHost.setChannel(this._worker, {
-					$sendTextSearchMatch: (match, queryId) => {
+					$sendTextSearchMatch: (match: any, queryId: any) => {
 						return this.sendTextSearchMatch(match, queryId);
+					},
+					$nodepodDirectoryGetFileHandleRequest: async (directory: string, filename: string, promiseId: number) => {
+						const nodepodFS = (window as any).nodepod.fs as NodepodFS;
+						const proxy = this._getOrCreateWorker().proxy;
+						const directoryUri = URI.file(directory);
+						//@ts-ignore
+						const exists = await nodepodFS.exists(URI.joinPath(directoryUri, filename).path);
+						if (exists) {
+							//@ts-ignore
+							const file = await nodepodFS.readFile(URI.joinPath(directoryUri, filename).path);
+							proxy.$nodepodDirectoryGetFileHandleResponse(promiseId,
+								file);
+						}
+						else {
+							proxy.$nodepodDirectoryGetFileHandleResponse(promiseId,
+								null);
+						}
+					},
+					$nodepodDirectoryGetEntriesRequest: async (directory: string, promiseId: number) => {
+						const nodepodFS = (window as any).nodepod.fs as NodepodFS;
+						const proxy = this._getOrCreateWorker().proxy;
+						const directoryUri = URI.file(directory);
+						const entries = [] as [string, any][];
+						//@ts-ignore
+						var dirFiles = await nodepodFS.readdir(directoryUri.path);
+						for (const item of dirFiles) {
+							//@ts-ignore
+							const itemStat = await nodepodFS.stat(URI.joinPath(directoryUri, item).path);
+							if (itemStat.isDirectory) {
+								entries.push([item, {
+									kind: 'directory',
+									name: URI.joinPath(directoryUri, item).path,
+									isDirectory: true,
+									isFile: false,
+									isNodepod: true,
+								}]);
+							}
+							else {
+								entries.push([item, {
+									kind: 'file',
+									name: URI.joinPath(directoryUri, item).path,
+									isDirectory: false,
+									isFile: true,
+									isNodepod: true,
+								}]);
+							}
+						}
+						proxy.$nodepodDirectoryGetEntriesResponse(promiseId,
+							entries as any);
+					},
+					$nodepodDirectoryGetFileContentsRequest: async (filename: string, promiseId: number) => {
+						const nodepodFS = (window as any).nodepod.fs as NodepodFS;
+						const proxy = this._getOrCreateWorker().proxy;
+						//@ts-ignore
+						const file = await nodepodFS.readFile(filename);
+						proxy.$nodepodDirectoryGetFileContentsResponse(promiseId,
+							file);
 					}
-				});
+				} as any)
 			} catch (err) {
 				logOnceWebWorkerWarning(err);
 				throw err;

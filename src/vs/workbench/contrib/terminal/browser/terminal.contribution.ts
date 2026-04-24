@@ -19,7 +19,7 @@ import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/edit
 import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
 import { WorkbenchPhase, registerWorkbenchContribution2 } from '../../../common/contributions.js';
 import { EditorExtensions, IEditorFactoryRegistry } from '../../../common/editor.js';
-import { IViewContainersRegistry, IViewsRegistry, Extensions as ViewContainerExtensions, ViewContainerLocation, WindowEnablement } from '../../../common/views.js';
+import { IViewContainersRegistry, IViewsRegistry, Extensions as ViewContainerExtensions, ViewContainerLocation, WindowVisibility } from '../../../common/views.js';
 import { ITerminalProfileService, TERMINAL_VIEW_ID, TerminalCommandId } from '../common/terminal.js';
 import { TerminalEditingService } from './terminalEditingService.js';
 import { registerColors } from '../common/terminalColorRegistry.js';
@@ -47,7 +47,9 @@ import { TerminalProfileService } from './terminalProfileService.js';
 import { TerminalService } from './terminalService.js';
 import { TerminalTelemetryContribution } from './terminalTelemetry.js';
 import { TerminalViewPane } from './terminalView.js';
-import { AgentHostTerminalService, IAgentHostTerminalService } from './agentHostTerminalService.js';
+
+// Nodepod imports
+// import { Nodepod } from '@scelar/nodepod';
 
 // Register services
 registerSingleton(ITerminalLogService, TerminalLogService, InstantiationType.Delayed);
@@ -58,7 +60,6 @@ registerSingleton(ITerminalEditingService, TerminalEditingService, Instantiation
 registerSingleton(ITerminalGroupService, TerminalGroupService, InstantiationType.Delayed);
 registerSingleton(ITerminalInstanceService, TerminalInstanceService, InstantiationType.Delayed);
 registerSingleton(ITerminalProfileService, TerminalProfileService, InstantiationType.Delayed);
-registerSingleton(IAgentHostTerminalService, AgentHostTerminalService, InstantiationType.Delayed);
 
 // Register workbench contributions
 // This contribution blocks startup as it's critical to enable the web embedder window.createTerminal API
@@ -113,7 +114,7 @@ const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewContainerExtensi
 	storageId: TERMINAL_VIEW_ID,
 	hideIfEmpty: true,
 	order: 3,
-	windowEnablement: WindowEnablement.Both
+	windowVisibility: WindowVisibility.Both
 }, ViewContainerLocation.Panel, { doNotRegisterOpenCommand: true, isDefault: true });
 Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry).registerViews([{
 	id: TERMINAL_VIEW_ID,
@@ -122,7 +123,7 @@ Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry).registerViews
 	canToggleVisibility: true,
 	canMoveView: true,
 	ctorDescriptor: new SyncDescriptor(TerminalViewPane),
-	windowEnablement: WindowEnablement.Both,
+	windowVisibility: WindowVisibility.Both,
 	openCommandActionDescriptor: {
 		id: TerminalCommandId.Toggle,
 		mnemonicTitle: nls.localize({ key: 'miToggleIntegratedTerminal', comment: ['&& denotes a mnemonic'] }, "&&Terminal"),
@@ -141,3 +142,39 @@ setupTerminalCommands();
 setupTerminalMenus();
 
 registerColors();
+
+// Create Nodepod terminal
+// let nodepodInstance: any;
+// let nodepodTerminal: any;
+
+// async function createNodepodTerminal(): Promise<void> {
+// // Boot nodepod instance
+//@ts-ignore
+// nodepodInstance = await Nodepod.boot({
+// 	files: {
+// 		'/nodepod/nodepod.code-workspace': '{ "folders": [ { "path": "/nodepod/" } ] }',
+// 		'/nodepod/test.txt': 'Hello, world!',
+// 		'/nodepod/tmp/test.txt': 'Hello, world!',
+// 		'/nodepod/home/test.txt': 'Hello, world!',
+// 	},
+// });
+
+// // Expose nodepod on window for debugging
+// (window as any).nodepod = nodepodInstance;
+
+// // Dynamically import xterm and fit addon
+// const [{ Terminal }] = await Promise.all([
+// 	import('@xterm/xterm'),
+// ]);
+
+// // Create nodepod terminal with xterm
+// nodepodTerminal = nodepodInstance.createTerminal({
+// 	Terminal
+// });
+
+// // Store terminal reference
+// (window as any).nodepodTerminal = nodepodTerminal;
+// }
+
+// Start creating the nodepod terminal
+//createNodepodTerminal().catch(console.error);

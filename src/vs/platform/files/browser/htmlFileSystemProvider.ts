@@ -20,6 +20,7 @@ import { IndexedDB } from '../../../base/browser/indexedDB.js';
 import { ILogService, LogLevel } from '../../log/common/log.js';
 
 import { Nodepod } from '@scelar/nodepod'
+import type { NodepodFS } from '@scelar/nodepod'
 
 // Boot a nodepod instance with some files
 //@ts-ignore

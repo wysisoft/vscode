@@ -16,6 +16,8 @@
     "vite": "npm:rolldown-vite@latest"
   },
   "dependencies": {
-    "http-server": "^14.1.1"
+    "express": "^5.2.1",
+    "http-server": "^14.1.1",
+    "serve-static": "^2.2.1"
   }
 }

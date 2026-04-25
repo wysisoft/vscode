@@ -11,6 +11,7 @@ import { pathToFileURL } from 'url';
 import { rollupEsmUrlPlugin } from '@vscode/rollup-plugin-esm-url';
 
 function injectBuiltinExtensionsPlugin(): Plugin {
+	console.log('injectBuiltinExtensionsPlugin');
 	let builtinExtensionsCache: unknown[] | null = null;
 
 	function replaceAllOccurrences(str: string, search: string, replace: string): string {
@@ -159,6 +160,8 @@ logger.warn = (msg, options) => {
 
 	loggerWarn(msg, options);
 };
+
+console.log('vite.config.ts');
 
 export default defineConfig({
 	base: './',

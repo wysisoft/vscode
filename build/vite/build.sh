@@ -1,8 +1,9 @@
+killall google-chrome
+
 rm -rf /home/a/webcode7/vscode/src/vs/workbench/services/keybinding/browser/keyboardLayouts/*.js
 rm -rf /home/a/webcode7/vscode/src/vs/base/common/*.js
 rm -rf /home/a/webcode7/vscode/src/vs/platform/keybinding/common/*.js
 rm -rf /home/a/webcode7/vscode/src/vs/platform/contextkey/common/*.js
-
 
 cd /home/a/webcode7/vscode
 npm run compile
@@ -24,6 +25,11 @@ cp -r /home/a/webcode7/vscode/src/vs/workbench/services/keybinding/browser/keybo
 
 cp -r /home/a/webcode7/vscode/build/vite/dist/static/sources/out /home/a/webcode7/vscode/build/vite/dist/
 
+cp -r /home/a/webcode7/vscode/node_modules/ /home/a/webcode7/vscode/build/vite/dist/node_modules/
+cp -r /home/a/webcode7/vscode/extensions/ /home/a/webcode7/vscode/build/vite/dist/extensions/
+
 cd /home/a/webcode7/vscode/build/vite/dist
 killall node
-node server.js
+
+node server.js & google-chrome --disable-web-security --disable-features=IsolateOrigins,site-per-process --disable-site-isolation-trials --user-data-dir="/home/a/UserDataDir1" --enable-features=SharedArrayBuffer https://webcode.host/build/vite/workbench-vite.html
+

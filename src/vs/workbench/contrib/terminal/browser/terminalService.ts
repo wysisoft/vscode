@@ -1160,7 +1160,7 @@ export class TerminalService extends Disposable implements ITerminalService {
 			shellLaunchConfig.parentTerminalId = parent.instanceId;
 			instance = group.split(shellLaunchConfig);
 		}
-		return instance;
+		return instance as ITerminalInstance;
 	}
 
 	private async _createTerminal(shellLaunchConfig: IShellLaunchConfig, location: TerminalLocation, options?: ICreateTerminalOptions): Promise<ITerminalInstance> {

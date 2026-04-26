@@ -321,9 +321,9 @@ function extensionDescriptionArrayToMap(extensions: IExtensionDescription[]): Ex
 }
 
 export function isProposedApiEnabled(extension: IExtensionDescription, proposal: ApiProposalName): boolean {
-	if (!extension.enabledApiProposals) {
-		return false;
-	}
+	//if (!extension.enabledApiProposals) {
+	//	return false;
+	//}
 	return true;// extension.enabledApiProposals.includes(proposal);
 }
 

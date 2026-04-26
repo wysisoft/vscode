@@ -71,6 +71,13 @@ else {
 			licenseName: 'MIT',
 			licenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
 			serverLicenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
+			//extensionRuntime, fileSearchProvider, textSearchProvider
+			//canonicalUriProvider, contribEditSessions, contribRemoteHelp, contribMenuBarHome, contribShareMenu, contribViewsRemote, contribViewsWelcome, documentFiltersExclusive, editSessionIdentityProvider, extensionRuntime, fileSearchProvider, quickPickSortByLabel, workspaceTrust, scmActionButton, scmSelectedProvider, scmValidation, shareProvider, textSearchProvider, timeline'
+			extensionEnabledApiProposals: {
+				"ms-vscode.remote-repositories": ["canonicalUriProvider", "contribEditSessions", "contribRemoteHelp", "contribMenuBarHome", "contribShareMenu", "contribViewsRemote", "contribViewsWelcome", "documentFiltersExclusive", "editSessionIdentityProvider", "extensionRuntime", "fileSearchProvider", "quickPickSortByLabel", "workspaceTrust", "scmActionButton", "scmSelectedProvider", "scmValidation", "shareProvider", "textSearchProvider", "timeline"],
+				"ms-vscode.azure-repos": ["extensionRuntime", "fileSearchProvider", "textSearchProvider"],
+				"GitHub.remotehub": ["extensionRuntime", "fileSearchProvider", "textSearchProvider", "scmSelectedProvider"],
+			},
 			defaultChatAgent: {
 				extensionId: 'GitHub.copilot',
 				chatExtensionId: 'GitHub.copilot-chat',

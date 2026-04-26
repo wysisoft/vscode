@@ -182,6 +182,7 @@ class ExtensionWorker {
 	constructor() {
 
 		const channel = new MessageChannel();
+		(globalThis as any).__extensionUserPort = channel.port1;
 		const emitter = new Emitter<VSBuffer>();
 		let terminating = false;
 

@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../../kimi-agent-sdk/node"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"cglicenses.json": "jsonc",
+			"*.tst": "typescript"
+		},
+		"git.ignoreLimitWarning": true,
+		"git.mergeEditor": true,
+		"debug.javascript.terminalOptions": {
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js",
+				"${workspaceFolder}/build/**/*.js"
+			]
+		},
+		"emmet.excludeLanguages": []
+	}
+}

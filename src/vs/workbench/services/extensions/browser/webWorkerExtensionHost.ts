@@ -35,7 +35,6 @@ import { ExtensionHostExitCode, IExtensionHostInitData, MessageType, UIKind, cre
 import { LocalWebWorkerRunningLocation } from '../common/extensionRunningLocation.js';
 import { ExtensionHostExtensions, ExtensionHostStartup, IExtensionHost } from '../common/extensions.js';
 
-import { util } from "@scelar/nodepod";
 class ClientState {
 	clientId;
 	mainProcess: any;

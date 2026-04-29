@@ -35,6 +35,92 @@ import { ExtensionHostExitCode, IExtensionHostInitData, MessageType, UIKind, cre
 import { LocalWebWorkerRunningLocation } from '../common/extensionRunningLocation.js';
 import { ExtensionHostExtensions, ExtensionHostStartup, IExtensionHost } from '../common/extensions.js';
 
+import { util } from "@scelar/nodepod";
+class ClientState {
+	clientId;
+	mainProcess: any;
+	promiseId = 0;
+	promises = new Map();
+	async startMainProcess(nodepod: any) {
+		nodepod.fs.writeFile('/tmp/server.js', `
+	const readline = require('readline');
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+	  terminal: false
+    });
+
+    rl.on('line', (line) => {
+      let req;
+      try {
+        req = JSON.parse(line);
+      } catch {
+        process.stderr.write(JSON.stringify({error: 'bad json'}) + '\\n');
+        return;
+      }
+
+      const response = { id: req.id };
+
+      if (req.type === 'process') {
+        response.result = {
+          env: process.env,
+          noDeprecation: process.noDeprecation,
+          throwDeprecation: process.throwDeprecation,
+          traceDeprecation: process.traceDeprecation,
+		  type: process.type,
+        };
+      }
+      if (req.type === 'util') {
+        response.result = {
+        };
+      }
+	if (req.type === 'tty') {
+		response.result = {
+		};
+	}
+
+      process.stdout.write(JSON.stringify(response) + '\\n');
+    });`);
+
+		this.mainProcess = await nodepod.spawn('node /tmp/server.js');
+
+		let lineBuffer = '';
+		this.mainProcess.on('output', (chunk: any) => {
+			debugger;
+			lineBuffer += chunk;
+			const lines = lineBuffer.split('\n');
+			lineBuffer = lines.pop() || ''; // keep incomplete tail
+			for (const line of lines) {
+				if (!line.trim())
+					continue;
+				const msg = JSON.parse(line);
+				if (msg.id !== undefined) {
+					this.promises.get(msg.id)?.resolve(msg.result);
+					this.promises.delete(msg.id);
+				}
+			}
+		});
+	}
+	// --- send helper (returns a Promise) ---
+	send(req: any) {
+		const id = ++this.promiseId;
+		return new Promise((resolve) => {
+			this.promises.set(id, { resolve });
+			this.mainProcess?.write(JSON.stringify({ id, ...req }) + '\n');
+		});
+	}
+	constructor(clientId: string) {
+		this.clientId = clientId;
+		this.mainProcess = null;
+		this.promiseId = 0;
+		this.promises = new Map();
+	}
+}
+
+const nodepodClientPrefix = "nodepodClient:";
+const clients = new Map();
+
+
 export interface IWebWorkerExtensionHostInitData {
 	readonly extensions: ExtensionHostExtensions;
 }
@@ -230,9 +316,50 @@ export class WebWorkerExtensionHost extends Disposable implements IExtensionHost
 		const messagePorts = this._environmentService.options?.messagePorts ?? new Map();
 		iframe.contentWindow!.postMessage({ type: 'vscode.init', data: messagePorts }, '*', [...messagePorts.values()]);
 
-		port.onmessage = (event) => {
+		port.onmessage = async (event) => {
 			const { data } = event;
 			if (!(data instanceof ArrayBuffer)) {
+
+				if (data?.type.startsWith(nodepodClientPrefix)) {
+
+					const { type, id, clientId } = event.data;
+
+					let clientState = clients.get(clientId);
+					if (!clientState) {
+						clientState = new ClientState(clientId);
+						clients.set(clientId, clientState);
+						await clientState.startMainProcess((window.parent as any).nodepod);
+					}
+					if (type === nodepodClientPrefix + "process") {
+						debugger;
+						const result = await clientState.send({ type: 'process' });
+						// Send response back to client with process info
+
+						port.postMessage({
+							type: nodepodClientPrefix + "process",
+							id: id,
+							result: result,
+						});
+					}
+					if (type === nodepodClientPrefix + "util") {
+						const result = await clientState.send({ type: 'util' });
+						port.postMessage({
+							type: nodepodClientPrefix + "util",
+							id: id,
+							result: result,
+						});
+					}
+					if (type === nodepodClientPrefix + "tty") {
+						const result = await clientState.send({ type: 'tty' });
+						port.postMessage({
+							type: nodepodClientPrefix + "tty",
+							id: id,
+							result: result,
+						});
+					}
+
+					return;
+				}
 				console.warn('UNKNOWN data received', data);
 				this._onDidExit.fire([77, 'UNKNOWN data received']);
 				return;

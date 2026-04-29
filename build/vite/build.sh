@@ -41,6 +41,10 @@ cp -r /home/a/webcode7/vscode/build/vite/dist/static/sources/out /home/a/webcode
 cp -r /home/a/webcode7/vscode/node_modules/ /home/a/webcode7/vscode/build/vite/dist/node_modules/
 cp -r /home/a/webcode7/vscode/extensions/ /home/a/webcode7/vscode/build/vite/dist/extensions/
 
+rm -rf /home/a/kimi-agent-sdk/node/vscode_extension/dist
+
+cd /home/a/kimi-agent-sdk/node/vscode_extension
+npm run build
 npx prettier --write /home/a/kimi-agent-sdk/node/vscode_extension/dist/extension.js --ignore-path /dev/null
 
 
@@ -48,59 +52,80 @@ npx prettier --write /home/a/kimi-agent-sdk/node/vscode_extension/dist/extension
 
 TARGET_FILE="/home/a/kimi-agent-sdk/node/vscode_extension/dist/extension.js"  # Update path as needed
 
-PREPEND_CODE='debugger;
-class NodepodClient {
-  promiseId = 0;
-  promises = new Map();
-  nodepodClientPrefix = "nodepodClient:";
-  worker;
-  clientId;
-// Process object with env and deprecation flags
-  process;
-constructor(worker, clientId) {
-this.clientId = clientId;
-this.worker = worker;
-// Initialize process with defaults
-this.process = {
-      env: {},
-      noDeprecation: false,
-      throwDeprecation: false,
-      traceDeprecation: false,
-    };
-this.worker.addEventListener("message", (event) => {
-const { type, id, result } = event.data;
-if (type === this.nodepodClientPrefix + "process") {
-const resolveFunc = this.promises.get(id);
-if (resolveFunc) {
-          resolveFunc(result);
-this.promises.delete(id);
+PREPEND_CODE='
+(async () => {
+
+  debugger;
+  class NodepodClient {
+    promiseId = 0;
+    promises = new Map();
+    nodepodClientPrefix = "nodepodClient:";
+    worker;
+    clientId;
+    // Process object with env and deprecation flags
+    process;
+    constructor(worker, clientId) {
+      this.clientId = clientId;
+      this.worker = worker;
+      // Initialize process with defaults
+      this.process = {
+        env: {},
+        noDeprecation: false,
+        throwDeprecation: false,
+        traceDeprecation: false,
+      };
+      globalThis.__extensionUserPort.onmessage = (event) => {
+        const { type, id, result } = event.data;
+        if (type === this.nodepodClientPrefix + "process") {
+          const resolveFunc = this.promises.get(id);
+          if (resolveFunc) {
+            resolveFunc(result);
+            this.promises.delete(id);
+          }
         }
+        if (type === this.nodepodClientPrefix + "util") {
+          const resolveFunc = this.promises.get(id);
+          if (resolveFunc) {
+            result.deprecate = nodepod_util_deprecate;
+            resolveFunc(result);
+            this.promises.delete(id);
+          }
+        }
+      };
+    }
+    createPostMessagePromise(type) {
+      const currentId = this.promiseId++;
+      let resolveFunc = null;
+      const postMessagePromise = new Promise((resolve, reject) => {
+        resolveFunc = resolve;
+      });
+      this.promises.set(currentId, resolveFunc);
+
+      globalThis.__extensionUserPort.postMessage({
+        type: type,
+        id: currentId,
+        clientId: this.clientId,
+      });
+      return postMessagePromise;
+    }
+    async polyfill(module) {
+      if (module === "process") {
+        return this.createPostMessagePromise(this.nodepodClientPrefix + "process");
       }
-    });
-  }
-  createPostMessagePromise(type) {
-const currentId = this.promiseId++;
-let resolveFunc = null;
-const postMessagePromise = new Promise((resolve, reject) => {
-      resolveFunc = resolve;
-    });
-this.promises.set(currentId, resolveFunc);
-this.worker.postMessage({
-      type: type,
-      id: currentId,
-      clientId: this.clientId,
-    });
-return postMessagePromise;
-  }
-async require(module) {
-if (module === "process") {
-return this.createPostMessagePromise(this.nodepodClientPrefix + "process");
+      if (module === "util") {
+        return this.createPostMessagePromise(this.nodepodClientPrefix + "util");
+      }
+      if (module === "tty") {
+        return this.createPostMessagePromise(this.nodepodClientPrefix + "tty");
+      }
     }
   }
-}
-(async () => {
-const client = new NodepodClient(self, "kimi");
-const process = await client.require("process");
+
+  const client = new NodepodClient(self, "kimi");
+  self.nodepodClient = client;
+  const process = await client.polyfill("process");
+  const nodepod_util = await client.polyfill("util");
+  const nodepod_tty = await client.polyfill("tty");
 '
 
 APPEND_CODE='})()
@@ -117,9 +142,44 @@ fi
 
 echo "Done. Code prepended and appended to '$TARGET_FILE'."
 
+sed -i 's/require("tty")/nodepod_tty/g' $TARGET_FILE
+sed -i 's/require("util")/nodepod_util/g' $TARGET_FILE
 
+rm -rf /home/a/webcode7/vscode/build/vite/dist/extensions/kimi/
 cp -r /home/a/kimi-agent-sdk/node/vscode_extension /home/a/webcode7/vscode/build/vite/dist/extensions/kimi/
 
+cp  /home/a/webcode7/vscode/node_modules/@scelar/nodepod/src/polyfills/util.ts ~/webcode7/vscode/build/vite/dist/extensions/kimi/dist/nodepod_util.ts
+
+cd /home/a/webcode7/vscode/build/vite/dist/extensions/kimi/dist
+npm i --save-dev @types/node
+
+cat > tsconfig.json << 'EOF'
+{
+  "compilerOptions": {
+    "outDir": "/home/a/webcode7/vscode/build/vite/dist/extensions/kimi/dist",
+    "module": "CommonJS",
+    "target": "ES2019",
+    "types": ["node"]
+  },
+  "exclude": ["NOTHING_TO_EXCLUDE"],
+  "include": ["/home/a/webcode7/vscode/build/vite/dist/extensions/kimi/dist/polyfills.ts"]
+}
+EOF
+
+
+cat > polyfills.ts << 'EOF'
+"use strict";
+import { deprecate } from "./nodepod_util";
+const nodepod_util_deprecate = deprecate;
+void nodepod_util_deprecate;
+EOF
+
+npx tsgo
+
+npx esbuild ./polyfills.js --bundle --platform=browser --format=cjs --outfile=polyfills.js --log-level=debug --allow-overwrite
+
+#combine extension.js and polyfills.ts into extension.js
+cat polyfills.js extension.js > extension.tmp.js && mv extension.tmp.js extension.js
 
 echo "Files copied to directories"
 
@@ -127,4 +187,3 @@ echo "Starting server"
 cd /home/a/webcode7/vscode/build/vite/dist
 killall node
 node server.js & google-chrome --disable-web-security --disable-features=IsolateOrigins,site-per-process --disable-site-isolation-trials --user-data-dir="/home/a/UserDataDir1" --enable-features=SharedArrayBuffer https://webcode.host/build/vite/workbench-vite.html
-

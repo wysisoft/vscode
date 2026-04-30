@@ -76,72 +76,11 @@ PREPEND_CODE='
       };
       globalThis.__extensionUserPort.onmessage = (event) => {
         const { type, id, result } = event.data;
-        if (type === this.nodepodClientPrefix + "process") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "util") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            result.deprecate = nodepod_util_deprecate;
-            result.promisify = nodepod_util_promisify;
-            result.format = nodepod_util_format;
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "tty") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            result.isatty = nodepod_tty_isatty;
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "path") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "child_process.spawn") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "child_process.execFile") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "child_process.execFileSync") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if (type === this.nodepodClientPrefix + "child_process.execSync") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
-        }
-        if(type === this.nodepodClientPrefix + "readline.createInterface") {
-          const resolveFunc = this.promises.get(id);
-          if (resolveFunc) {
-            resolveFunc(result);
-            this.promises.delete(id);
-          }
+
+        const resolveFunc = this.promises.get(id);
+        if (resolveFunc) {
+          resolveFunc(result);
+          this.promises.delete(id);
         }
       };
     }

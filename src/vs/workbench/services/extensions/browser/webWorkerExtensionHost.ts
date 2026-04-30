@@ -126,10 +126,6 @@ class ClientState {
 			history: createInterfaceResult.history
 		};
 	}
-      if (req.type === 'util' || req.type == 'tty' || req.type == 'path') {
-        response.result = {
-        };
-      }
 
       process.stdout.write(JSON.stringify(response) + '\\n');
     });`);

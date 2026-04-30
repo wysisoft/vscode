@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../../../kimi-agent-sdk/node"
+		},
+		{
+			"path": "../../../../Nodepod"
 		}
 	],
 	"settings": {

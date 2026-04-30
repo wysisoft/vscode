@@ -38,11 +38,14 @@ import { ExtensionHostExtensions, ExtensionHostStartup, IExtensionHost } from '.
 class ClientState {
 	clientId;
 	mainProcess: any;
+	fs: any;
 	promiseId = 0;
 	promises = new Map();
 	async startMainProcess(nodepod: any) {
+		this.fs = nodepod.fs;
 		nodepod.fs.writeFile('/tmp/server.js', `
 	const readline = require('readline');
+	const child_process = require('child_process');
 
     const rl = readline.createInterface({
       input: process.stdin,
@@ -67,21 +70,73 @@ class ClientState {
           throwDeprecation: process.throwDeprecation,
           traceDeprecation: process.traceDeprecation,
 		  type: process.type,
+		  stderr: {
+		 	fd: process.stderr.fd,
+		  },
+		  arch: process.arch,
+		  argv: process.argv,
         };
       }
-      if (req.type === 'util') {
+	if (req.type === 'child_process.spawn') {
+		const spawnResult = child_process.spawn(req.params.command, req.params.args, req.params.options);
+		response.result = {
+			pid: spawnResult.pid,
+			connected: spawnResult.connected,
+			killed: spawnResult.killed,
+			exitCode: spawnResult.exitCode,
+			signalCode: spawnResult.signalCode,
+		};
+	}
+	if (req.type === 'child_process.execFile') {
+		const execFileResult = child_process.execFile(req.params.file, req.params.args, req.params.options);
+		response.result = {
+			pid: execFileResult.pid,
+			connected: execFileResult.connected,
+			killed: execFileResult.killed,
+			exitCode: execFileResult.exitCode,
+			signalCode: execFileResult.signalCode,
+		};
+	}
+	if (req.type === 'child_process.execFileSync') {
+		const execFileSyncResult = child_process.execFileSync(req.params.file, req.params.args, req.params.options);
+		response.result = {
+			pid: execFileSyncResult.pid,
+			connected: execFileSyncResult.connected,
+			killed: execFileSyncResult.killed,
+			exitCode: execFileSyncResult.exitCode,
+			signalCode: execFileSyncResult.signalCode,
+		};
+	}
+	if (req.type === 'child_process.execSync') {
+		const execSyncResult = child_process.execSync(req.params.command, req.params.options);
+		response.result = {
+			pid: execSyncResult.pid,
+			connected: execSyncResult.connected,
+			killed: execSyncResult.killed,
+			exitCode: execSyncResult.exitCode,
+			signalCode: execSyncResult.signalCode,
+		};
+	}
+	if (req.type === 'readline.createInterface') {
+		const createInterfaceResult = readline.createInterface(req.params.options);
+		response.result = {
+			terminal: createInterfaceResult.terminal,
+			line: createInterfaceResult.line,
+			cursor: createInterfaceResult.cursor,
+			history: createInterfaceResult.history
+		};
+	}
+      if (req.type === 'util' || req.type == 'tty' || req.type == 'path') {
         response.result = {
         };
       }
-	if (req.type === 'tty') {
-		response.result = {
-		};
-	}
 
       process.stdout.write(JSON.stringify(response) + '\\n');
     });`);
 
 		this.mainProcess = await nodepod.spawn('node /tmp/server.js');
+
+		eval("debugger;");
 
 		let lineBuffer = '';
 		this.mainProcess.on('output', (chunk: any) => {
@@ -329,29 +384,86 @@ export class WebWorkerExtensionHost extends Disposable implements IExtensionHost
 						clients.set(clientId, clientState);
 						await clientState.startMainProcess((window.parent as any).nodepod);
 					}
-					if (type === nodepodClientPrefix + "process") {
-						debugger;
-						const result = await clientState.send({ type: 'process' });
-						// Send response back to client with process info
+					if (type === nodepodClientPrefix + "process" ||
+						type === nodepodClientPrefix + "util" ||
+						type === nodepodClientPrefix + "tty" ||
+						type === nodepodClientPrefix + "path" ||
+						type === nodepodClientPrefix + "readline.createInterface" ||
+						type === nodepodClientPrefix + "child_process.spawn" ||
+						type === nodepodClientPrefix + "child_process.execFile" ||
+						type === nodepodClientPrefix + "child_process.execFileSync" ||
+						type === nodepodClientPrefix + "child_process.execSync"
+					) {
+						const result = await clientState.send({ type: type.replace(nodepodClientPrefix, '') });
+						port.postMessage({
+							type,
+							id,
+							result,
+						});
+					}
 
+					if (type === nodepodClientPrefix + "fs.existsSync" ||
+						type === nodepodClientPrefix + "fs.readFileSync" ||
+						type === nodepodClientPrefix + "fs.createReadStream" ||
+						type === nodepodClientPrefix + "fs.mkdirSync" ||
+						type === nodepodClientPrefix + "fs.readdirSync" ||
+						type === nodepodClientPrefix + "fs.statSync" ||
+						type === nodepodClientPrefix + "fs.unlinkSync" ||
+						type === nodepodClientPrefix + "fs.rmdirSync" ||
+						type === nodepodClientPrefix + "fs.rmSync" ||
+						type === nodepodClientPrefix + "fsp.access" ||
+						type === nodepodClientPrefix + "fsp.readdir" ||
+						type === nodepodClientPrefix + "fsp.stat" ||
+						type === nodepodClientPrefix + "fsp.mkdir" ||
+						type === nodepodClientPrefix + "fsp.readFile" ||
+						type === nodepodClientPrefix + "fsp.rm"
+					) {
+						const result = clientState.fs[type.replace(nodepodClientPrefix, '').replace('fsp.', 'fs.').replace('.fs.', '')](event.data.params.path);
 						port.postMessage({
-							type: nodepodClientPrefix + "process",
+							type,
+							id,
+							result,
+						});
+					}
+
+					if (type === nodepodClientPrefix + "fs.writeFileSync") {
+						const result = clientState.fs.writeFileSync(event.data.params.path, event.data.params.data);
+						port.postMessage({
+							type: nodepodClientPrefix + "fs.writeFileSync",
 							id: id,
 							result: result,
 						});
 					}
-					if (type === nodepodClientPrefix + "util") {
-						const result = await clientState.send({ type: 'util' });
+					if (type === nodepodClientPrefix + "fs.renameSync") {
+						const result = clientState.fs.renameSync(event.data.params.oldPath, event.data.params.newPath);
 						port.postMessage({
-							type: nodepodClientPrefix + "util",
+							type: nodepodClientPrefix + "fs.renameSync",
 							id: id,
 							result: result,
 						});
 					}
-					if (type === nodepodClientPrefix + "tty") {
-						const result = await clientState.send({ type: 'tty' });
+
+					if (type === nodepodClientPrefix + "fsp.writeFile") {
+						const result = clientState.fs.writeFile(event.data.params.path, event.data.params.data);
 						port.postMessage({
-							type: nodepodClientPrefix + "tty",
+							type: nodepodClientPrefix + "fsp.writeFile",
+							id: id,
+							result: result,
+						});
+					}
+					if (type === nodepodClientPrefix + "fs.chmodSync") {
+						const result = clientState.fs.chmodSync(event.data.params.path, event.data.params.mode);
+						port.postMessage({
+							type: nodepodClientPrefix + "fs.chmodSync",
+							id: id,
+							result: result,
+						});
+					}
+
+					if (type === nodepodClientPrefix + "fs.copyFileSync") {
+						const result = clientState.fs.copyFileSync(event.data.params.src, event.data.params.dest);
+						port.postMessage({
+							type: nodepodClientPrefix + "fs.copyFileSync",
 							id: id,
 							result: result,
 						});
